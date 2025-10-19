@@ -1,13 +1,17 @@
 services:
   - type: web
     name: cloud-edge-os-backend
-    env: node
+    env: docker
     region: oregon
     plan: free
-    buildCommand: npm install
-    startCommand: node server.js
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3001
+      - key: CODE_EXECUTION_TIMEOUT
+        value: 30000
+      - key: MAX_OUTPUT_BUFFER
+        value: 10485760

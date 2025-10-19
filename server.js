@@ -468,6 +468,94 @@ app.post('/api/proxy-blob', async (req, res) => {
   }
 });
 
+// Stream audio endpoint for media player (supports range requests for seeking)
+app.get('/api/stream-audio', async (req, res) => {
+  try {
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'No URL provided',
+      });
+    }
+
+    // Validate URL
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid URL format',
+      });
+    }
+
+    console.log(`Streaming audio from: ${url}`);
+
+    // Get range header from client
+    const range = req.headers.range;
+
+    // Fetch headers first to get content length
+    const headResponse = await fetch(url, { method: 'HEAD' });
+    const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
+    const contentType = headResponse.headers.get('content-type') || 'audio/mpeg';
+
+    if (range) {
+      // Parse range header
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : contentLength - 1;
+      const chunkSize = (end - start) + 1;
+
+      // Fetch with range
+      const response = await fetch(url, {
+        headers: {
+          'Range': `bytes=${start}-${end}`,
+          'User-Agent': 'Cloud-Edge-OS/1.0'
+        }
+      });
+
+      // Set response headers for partial content
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${contentLength}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+      });
+
+      // Stream the response
+      response.body.pipe(res);
+    } else {
+      // No range, stream entire file
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Cloud-Edge-OS/1.0'
+        }
+      });
+
+      res.writeHead(200, {
+        'Content-Length': contentLength,
+        'Content-Type': contentType,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600',
+      });
+
+      // Stream the response
+      response.body.pipe(res);
+    }
+  } catch (error) {
+    console.error('Stream audio error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Stream failed',
+      });
+    }
+  }
+});
+
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

@@ -335,6 +335,139 @@ app.post('/api/upload-url', async (req, res) => {
   }
 });
 
+// Proxy endpoint for fetching files from Catbox (to avoid CORS)
+app.post('/api/proxy', async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'No URL provided',
+      });
+    }
+
+    // Validate URL
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid URL format',
+      });
+    }
+
+    console.log(`Proxying request to: ${url}`);
+
+    // Fetch file from URL with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    let response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Cloud-Edge-OS/1.0'
+        }
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Request timeout - URL took too long to respond');
+      }
+      throw new Error(`Failed to fetch URL: ${fetchError.message}`);
+    }
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    }
+
+    const content = await response.text();
+
+    res.json({
+      success: true,
+      content,
+    });
+  } catch (error) {
+    console.error('Proxy error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Proxy request failed',
+    });
+  }
+});
+
+// Proxy endpoint for fetching blobs from Catbox (to avoid CORS)
+app.post('/api/proxy-blob', async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'No URL provided',
+      });
+    }
+
+    // Validate URL
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid URL format',
+      });
+    }
+
+    console.log(`Proxying blob request to: ${url}`);
+
+    // Fetch file from URL with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    let response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Cloud-Edge-OS/1.0'
+        }
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Request timeout - URL took too long to respond');
+      }
+      throw new Error(`Failed to fetch URL: ${fetchError.message}`);
+    }
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    }
+
+    const buffer = await response.buffer();
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+    // Set appropriate headers and send blob
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Proxy blob error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Proxy request failed',
+    });
+  }
+});
+
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

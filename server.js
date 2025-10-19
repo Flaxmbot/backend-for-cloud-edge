@@ -394,6 +394,57 @@ app.use((err, req, res, next) => {
 
 // Code Execution Endpoints
 
+// Unified code execution endpoint
+app.post('/api/execute', async (req, res) => {
+    try {
+        const { code, language, input } = req.body;
+        
+        if (!code) {
+            return res.status(400).json({ success: false, error: 'No code provided' });
+        }
+
+        if (!language) {
+            return res.status(400).json({ success: false, error: 'No language specified' });
+        }
+
+        let result;
+        
+        switch (language.toLowerCase()) {
+            case 'python':
+            case 'py':
+                result = await executePython(code, input);
+                break;
+            
+            case 'javascript':
+            case 'js':
+                result = await executeJavaScript(code, input);
+                break;
+            
+            case 'java':
+                const className = code.match(/class\s+(\w+)/)?.[1] || 'Main';
+                result = await executeJava(code, className, input);
+                break;
+            
+            case 'c':
+            case 'cpp':
+            case 'c++':
+                result = await executeCpp(code, language === 'c' ? 'c' : 'cpp', input);
+                break;
+            
+            default:
+                return res.status(400).json({
+                    success: false,
+                    error: `Unsupported language: ${language}`
+                });
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Code execution error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Check environment
 app.get('/api/code/environment', async (req, res) => {
     try {

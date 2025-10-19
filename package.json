@@ -1,0 +1,28 @@
+{
+  "name": "cloud-edge-os-backend",
+  "version": "1.0.0",
+  "description": "Backend server for Cloud Edge OS with Catbox.moe integration",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test-upload.js"
+  },
+  "keywords": [
+    "express",
+    "catbox",
+    "file-upload"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-catbox": "^1.0.0",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -881,6 +881,26 @@ app.listen(PORT, () => {
     console.log(`📡 Running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`✅ Ready to accept requests`);
+    
+    // Keep-alive mechanism for Render free tier
+    // Ping the server every 15 minutes to prevent it from sleeping
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        const KEEP_ALIVE_INTERVAL = 15 * 60 * 1000; // 15 minutes
+        const serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+        
+        setInterval(async () => {
+            try {
+                console.log(`[Keep-Alive] Pinging server at ${new Date().toISOString()}`);
+                const response = await fetch(`${serverUrl}/api/health`);
+                const data = await response.json();
+                console.log(`[Keep-Alive] Server is alive - uptime: ${Math.floor(data.uptime)}s`);
+            } catch (error) {
+                console.error(`[Keep-Alive] Ping failed:`, error.message);
+            }
+        }, KEEP_ALIVE_INTERVAL);
+        
+        console.log(`⏰ Keep-alive enabled - pinging every 15 minutes`);
+    }
 });
 
 // Graceful shutdown
